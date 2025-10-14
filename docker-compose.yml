@@ -13,10 +13,10 @@ services:
       - $POSTGRESDB_LOCAL_PORT:$POSTGRESDB_DOCKER_PORT
     volumes:
       - db:/var/lib/postgres
-  app:
+  backend:
     depends_on:
       - postgresdb
-    build: ./bezkoder-app
+    build: ./backend
     restart: on-failure
     env_file: ./.env
     ports:
