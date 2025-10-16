@@ -48,8 +48,8 @@ services:
       image: quay.io/keycloak/keycloak:23.0.6
       command: start
       environment:
-        KC_HOSTNAME: localhost
-        KC_HOSTNAME_PORT: 9090
+        KC_HOSTNAME: ${KEYCLOAK_HOST_NAME}
+        KC_HOSTNAME_PORT: ${KEYCLOAK_HOST_PORT}
         KC_HOSTNAME_STRICT_BACKCHANNEL: false
         KC_HTTP_ENABLED: true
         KC_HOSTNAME_STRICT_HTTPS: false
@@ -61,7 +61,7 @@ services:
         KC_DB_USERNAME: ${POSTGRESDB_USER}
         KC_DB_PASSWORD: ${POSTGRESDB_ROOT_PASSWORD}
       ports:
-        - "9090:8080"  # Expose Keycloak on port 9090
+        - ${KEYCLOAK_HOST_PORT}:${KEYCLOAK_DOCKER_PORT}  # Expose Keycloak on port 9090
       restart: always
       depends_on:
         postgresdb:
