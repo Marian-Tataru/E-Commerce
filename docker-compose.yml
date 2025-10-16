@@ -13,6 +13,14 @@ services:
       - $POSTGRESDB_LOCAL_PORT:$POSTGRESDB_DOCKER_PORT
     volumes:
       - db:/var/lib/postgres
+    networks:
+      - keycloak_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESDB_USER} -d ${POSTGRESDB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
   backend:
     depends_on:
       - postgresdb
@@ -31,8 +39,40 @@ services:
       }'
     volumes:
       - .m2:/root/.m2
+    networks:
+      - keycloak_network
     stdin_open: true
     tty: true
 
+  keycloak:
+      image: quay.io/keycloak/keycloak:23.0.6
+      command: start
+      environment:
+        KC_HOSTNAME: localhost
+        KC_HOSTNAME_PORT: 9090
+        KC_HOSTNAME_STRICT_BACKCHANNEL: false
+        KC_HTTP_ENABLED: true
+        KC_HOSTNAME_STRICT_HTTPS: false
+        KC_HEALTH_ENABLED: true
+        KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+        KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+        KC_DB: postgres
+        KC_DB_URL: jdbc:postgresql://postgresdb:$POSTGRESDB_DOCKER_PORT/$POSTGRESDB_DATABASE
+        KC_DB_USERNAME: ${POSTGRESDB_USER}
+        KC_DB_PASSWORD: ${POSTGRESDB_ROOT_PASSWORD}
+      ports:
+        - "9090:8080"  # Expose Keycloak on port 9090
+      restart: always
+      depends_on:
+        postgresdb:
+          condition: service_healthy  # Ensure Keycloak starts only if PostgreSQL is healthy
+      networks:
+        - keycloak_network
+
+
 volumes:
   db:
+
+networks:
+  keycloak_network:
+    driver: bridge
