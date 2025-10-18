@@ -1,46 +1,70 @@
-version: "3.8"
 
 services:
-  postgresdb:
+
+  # ecommerce api services
+  api_db:
     image: postgres
     restart: unless-stopped
     env_file: ./.env
     environment:
-      - POSTGRES_USER=$POSTGRESDB_USER
-      - POSTGRES_PASSWORD=$POSTGRESDB_ROOT_PASSWORD
-      - POSTGRES_DB=$POSTGRESDB_DATABASE
+      - POSTGRES_USER=${API_DB_USER}
+      - POSTGRES_PASSWORD=${API_DB_PASS}
+      - POSTGRES_DB=${API_DB_NAME}
+      - PGPORT=${API_DB_PORT_DOCKER}
     ports:
-      - $POSTGRESDB_LOCAL_PORT:$POSTGRESDB_DOCKER_PORT
+      - ${API_DB_PORT_HOST}:${API_DB_PORT_DOCKER}
     volumes:
-      - db:/var/lib/postgres
+      - api_db:/var/lib/postgres
     networks:
       - keycloak_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRESDB_USER} -d ${POSTGRESDB_DATABASE}"]
+      test: ["CMD-SHELL", "pg_isready -U ${API_DB_USER} -d ${API_DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
   
-  backend:
+  api_backend:
     depends_on:
-      - postgresdb
+      - api_db
     build: ./backend
     restart: on-failure
     env_file: ./.env
     ports:
-      - $SPRING_LOCAL_PORT:$SPRING_DOCKER_PORT
+      - ${SPRING_PORT_HOST}:${SPRING_PORT_DOCKER}
     environment:
       SPRING_APPLICATION_JSON: '{
-        "spring.datasource.url"  : "jdbc:postgresql://postgresdb:$POSTGRESDB_DOCKER_PORT/$POSTGRESDB_DATABASE",
-        "spring.datasource.username" : "$POSTGRESDB_USER",
-        "spring.datasource.password" : "$POSTGRESDB_ROOT_PASSWORD",
+        "spring.datasource.url"  : "jdbc:postgresql://api_db:${API_DB_PORT_DOCKER}/${API_DB_NAME}",
+        "spring.datasource.username" : "$API_DB_USER",
+        "spring.datasource.password" : "$API_DB_PASS",
         "spring.jpa.properties.hibernate.dialect" : "org.hibernate.dialect.PostgreSQLDialect",
         "spring.jpa.hibernate.ddl-auto" : "update"
       }'
-    volumes:
-      - .m2:/root/.m2
     networks:
       - keycloak_network
+    stdin_open: true
+    tty: true
+
+  #  keycloack services 
+  kc_db:
+    image: postgres
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      - POSTGRES_USER=${KC_DB_USER}
+      - POSTGRES_PASSWORD=${KC_DB_PASS}
+      - POSTGRES_DB=${KC_DB_NAME}
+      - PGPORT=${KC_DB_PORT_DOCKER}
+    ports:
+      - ${KC_DB_PORT_HOST}:${KC_DB_PORT_DOCKER}
+    volumes:
+      - kc_db:/var/lib/postgres
+    networks:
+      - keycloak_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KC_DB_USER} -d ${KC_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     stdin_open: true
     tty: true
 
@@ -48,30 +72,32 @@ services:
       image: quay.io/keycloak/keycloak:23.0.6
       command: start
       environment:
-        KC_HOSTNAME: ${KEYCLOAK_HOST_NAME}
-        KC_HOSTNAME_PORT: ${KEYCLOAK_HOST_PORT}
+        KC_HOSTNAME: ${KC_HOST_NAME}
+        KC_HOSTNAME_PORT: ${KC_PORT_HOST}
         KC_HOSTNAME_STRICT_BACKCHANNEL: false
         KC_HTTP_ENABLED: true
         KC_HOSTNAME_STRICT_HTTPS: false
         KC_HEALTH_ENABLED: true
-        KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-        KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+        KEYCLOAK_ADMIN: ${KC_ADMIN}
+        KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
         KC_DB: postgres
-        KC_DB_URL: jdbc:postgresql://postgresdb:$POSTGRESDB_DOCKER_PORT/$POSTGRESDB_DATABASE
-        KC_DB_USERNAME: ${POSTGRESDB_USER}
-        KC_DB_PASSWORD: ${POSTGRESDB_ROOT_PASSWORD}
+        KC_DB_URL: jdbc:postgresql://kc_db:${KC_DB_PORT_DOCKER}/${KC_DB_NAME}
+        KC_DB_USERNAME: ${KC_DB_USER}
+        KC_DB_PASSWORD: ${KC_DB_PASS}
       ports:
-        - ${KEYCLOAK_HOST_PORT}:${KEYCLOAK_DOCKER_PORT}  # Expose Keycloak on port 9090
-      restart: always
+        - ${KC_PORT_HOST}:${KC_PORT_DOCKER}  
       depends_on:
-        postgresdb:
-          condition: service_healthy  # Ensure Keycloak starts only if PostgreSQL is healthy
+        kc_db:
+          condition: service_healthy  
       networks:
         - keycloak_network
+      stdin_open: true
+      tty: true
 
 
 volumes:
-  db:
+  api_db:
+  kc_db:
 
 networks:
   keycloak_network:

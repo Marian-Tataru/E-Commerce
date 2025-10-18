@@ -10,7 +10,4 @@ public class TutorialController {
 	public String simpleSoup(){
 		return "SimpleSoup";
 	}
-	
-
-	
 }
