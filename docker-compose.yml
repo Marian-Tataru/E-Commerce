@@ -14,7 +14,7 @@ services:
     ports:
       - ${API_DB_PORT_HOST}:${API_DB_PORT_DOCKER}
     volumes:
-      - api_db:/var/lib/postgres
+      - api_db:/var/lib/postgresql/data
     networks:
       - keycloak_network
     healthcheck:
@@ -57,7 +57,7 @@ services:
     ports:
       - ${KC_DB_PORT_HOST}:${KC_DB_PORT_DOCKER}
     volumes:
-      - kc_db:/var/lib/postgres
+      - kc_db:/var/lib/postgresql/data
     networks:
       - keycloak_network
     healthcheck:
@@ -91,6 +91,8 @@ services:
           condition: service_healthy  
       networks:
         - keycloak_network
+      volumes:
+        - keycloak:/opt/keycloak/data/
       stdin_open: true
       tty: true
 
@@ -98,6 +100,7 @@ services:
 volumes:
   api_db:
   kc_db:
+  keycloak:
 
 networks:
   keycloak_network:
