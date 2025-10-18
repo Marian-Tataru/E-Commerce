@@ -92,7 +92,8 @@ services:
       networks:
         - keycloak_network
       volumes:
-        - keycloak:/opt/keycloak/data/
+        - keycloak:/opt/keycloak/data
+        - ./keycloak/imports:/opt/keycloak/data/import #load custom configuration at startup
       stdin_open: true
       tty: true
 
